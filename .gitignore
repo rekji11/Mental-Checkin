@@ -1,0 +1,4 @@
+/.env
+/mental_health.db
+/venv
+/__pycache__
