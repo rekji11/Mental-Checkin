@@ -4,6 +4,8 @@ from app import models, schemas, auth
 from app.database import get_db
 from fastapi import Form
 from app.auth import verify_password, create_access_token
+from app.deps import oauth2_scheme
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -54,3 +56,4 @@ def login(
     token = create_access_token({"sub": user.username})
 
     return {"access_token": token, "token_type": "bearer"}
+
