@@ -52,23 +52,6 @@ def read_entries(
     )
     return entries
 
-@router.get("/summary")
-def get_summary(
-    db: Session = Depends(get_db),
-    current_username: str = Depends(get_current_username),
-):
-    owner_id = get_user_id(db, current_username)
-    
-    average_mood = (
-        db.query(func.avg(models.TrackerEntry.mood_rating))
-        .filter(models.TrackerEntry.owner_id == owner_id)
-        .scalar()
-    )
-
-    return {
-        "average_mood": round(average_mood, 2) if average_mood is not None else 0.0,
-        "total_entries": db.query(models.TrackerEntry).filter(models.TrackerEntry.owner_id == owner_id).count()
-    }
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_entry(
@@ -93,3 +76,47 @@ def delete_entry(
     db.commit()
     
     return {"message": "Entry deleted successfully"}
+
+@router.get("/summary", response_model=schemas.TrackerSummary)
+def get_summary(
+    db: Session = Depends(get_db),
+    current_username: str = Depends(get_current_username)
+):
+    owner_id = get_user_id(db, current_username)
+    summary_data = db.query(
+        func.avg(models.TrackerEntry.mood_rating).label('average_mood'),
+        func.count(models.TrackerEntry.id).label('total_entries')
+    ).filter(
+        models.TrackerEntry.owner_id == owner_id
+    ).first()
+    
+    if summary_data.total_entries == 0:
+        return {
+            "average_mood": 0.0,
+            "total_entries": 0,
+            "best_day_entry": None,
+            "worst_day_entry": None,
+        }
+
+    base_query = db.query(models.TrackerEntry).filter(
+        models.TrackerEntry.owner_id == owner_id
+    )
+    
+    best_entry = base_query.order_by(
+        models.TrackerEntry.mood_rating.desc(),
+        models.TrackerEntry.timestamp.desc()
+    ).first()
+
+    worst_entry = base_query.order_by(
+        models.TrackerEntry.mood_rating.asc(),
+        models.TrackerEntry.timestamp.asc()
+    ).first()
+
+    summary = {
+        "average_mood": summary_data.average_mood if summary_data.average_mood is not None else 0.0,
+        "total_entries": summary_data.total_entries,
+        "best_day_entry": best_entry,
+        "worst_day_entry": worst_entry,
+    }
+
+    return summary
