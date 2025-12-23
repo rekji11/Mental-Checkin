@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-
+from typing import Optional
 
 class UserCreate(BaseModel):
     username: str
@@ -20,3 +20,17 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class EntryCreate(BaseModel):
+    mood_rating: int = Field(..., ge=1, le=5, description="Mood rating from 1 (Bad) to 5 (Great)")
+    notes: Optional[str] = Field(None, description="Notes about the entry (optional)")
+
+class EntryResponse(BaseModel):
+    id: int
+    mood_rating: int
+    notes: Optional[str] = None
+    timestamp: datetime
+    owner_id: int
+    
+    class Config:
+        orm_mode = True
