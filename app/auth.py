@@ -1,11 +1,11 @@
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 import os
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
 
+from fastapi import Depends, HTTPException, status 
 
 
 load_dotenv()
@@ -32,3 +32,33 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
+
+def decode_access_token(token: str):
+    """
+    Decodes the JWT and extracts the username ("sub" claim).
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        
+        if username is None:
+            return None
+        return username
+    except JWTError:
+        return None
+
+def get_current_username(token: str = Depends(oauth2_scheme)):
+    """
+    A FastAPI dependency that validates the token and returns the username,
+    raising an HTTP exception if the token is invalid.
+    """
+    username = decode_access_token(token)
+    
+    if username is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials or token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return username

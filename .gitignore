@@ -2,3 +2,5 @@
 /mental_health.db
 /venv
 /__pycache__
+/app/__pycache__
+/app/routes/__pycache__
