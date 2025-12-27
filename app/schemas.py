@@ -1,8 +1,7 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 from datetime import datetime
 from typing import List, Optional
 
-# Re-use the existing TrackerEntry schema for the best/worst day details
 class TrackerEntryBase(BaseModel):
     mood_rating: int
     notes: Optional[str] = None
@@ -55,3 +54,15 @@ class EntryResponse(BaseModel):
     
     class Config:
         orm_mode = True
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+    
+    @validator('new_password')
+    def password_must_be_different(cls, v, values):
+        if 'current_password' in values and v == values['current_password']:
+            raise ValueError('New password must be different from current password.')
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long.')
+        return v

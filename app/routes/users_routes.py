@@ -1,9 +1,8 @@
-# app/users_routes.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm 
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.auth import get_current_username, verify_password, create_access_token, hash_password # <-- Import hash_password
+from app.auth import get_current_username, verify_password, create_access_token, hash_password, get_password_hash
 from app import models, schemas 
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -49,3 +48,26 @@ def login_for_access_token(
 @router.get("/me")
 def read_me(current_username: str = Depends(get_current_username)):
     return {"username": current_username, "message": "Successfully authenticated."}
+
+
+@router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+def update_password(
+    password_data: schemas.PasswordUpdate,
+    db: Session = Depends(get_db),
+    current_username: str = Depends(get_current_username)
+):
+    user = db.query(models.User).filter(models.User.username == current_username).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not verify_password(password_data.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect"
+        )
+    user.hashed_password = get_password_hash(password_data.new_password)
+    db.add(user)
+    db.commit()
+    
+    return {"message": "Password successfully updated"}
